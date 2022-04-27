@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
         indexFile.identifier?.let {
             it.substring(0, it.lastIndexOf(":"))
         }
-    }?.toSet() ?: return //Make set to remove duplicates
+    }?.distinct() ?: return
 
     println("Attempting to validate all manifests...")
 
