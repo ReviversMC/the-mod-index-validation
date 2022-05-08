@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    api("com.github.reviversmc:the-mod-index-api:2.1.0")
+    api("com.github.reviversmc:the-mod-index-api:2.1.1")
 }
 
 tasks {
