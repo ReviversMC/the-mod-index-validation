@@ -18,13 +18,14 @@ fun main(args: Array<String>) {
         throw SerializationException("Serialization error of \"index.json\" at repository ${apiDownloader.repositoryUrlAsString}.")
     }
 
-    println("Index file validated successfully.")
-
     val availableManifests = indexJson?.files?.mapNotNull { indexFile ->
         indexFile.identifier?.let {
+            if (it.lowercase() != it) throw IllegalStateException("Identifier \"$it\" is not lowercase.")
             it.substring(0, it.lastIndexOf(":"))
         }
     }?.distinct() ?: return
+
+    println("Index file validated successfully.")
 
     println("Attempting to validate all manifests...")
 
