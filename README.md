@@ -1,6 +1,6 @@
 # The Mod Index Validation
 
-A GitHub action that validates all entries in the-mod-index
+A GitHub action that validates all entries in the-mod-index. Will fail if any entries have been found to not be up to the given spec.
 
 ### Usage:
 
