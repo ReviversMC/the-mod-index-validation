@@ -7,7 +7,7 @@ A GitHub action that validates all entries in the-mod-index. Will fail if any en
 ```yaml
 steps:
   - name: Do the checking of index and manifest files
-    uses: reviversmc/the-mod-index-validation@v1
+    uses: reviversmc/the-mod-index-validation@"latest major version"
     with: 
       repoUrl: https://raw.githubusercontent.com/ReviversMC/the-mod-index/v1
 ```
