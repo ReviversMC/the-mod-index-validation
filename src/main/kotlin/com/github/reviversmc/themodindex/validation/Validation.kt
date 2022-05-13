@@ -3,6 +3,7 @@ package com.github.reviversmc.themodindex.validation
 import com.github.reviversmc.themodindex.api.downloader.DefaultApiDownloader
 import kotlinx.serialization.SerializationException
 import okhttp3.OkHttpClient
+import java.io.IOException
 
 fun main(args: Array<String>) {
 
@@ -16,14 +17,19 @@ fun main(args: Array<String>) {
         apiDownloader.getOrDownloadIndexJson()
     } catch (ex: SerializationException) {
         throw SerializationException("Serialization error of \"index.json\" at repository ${apiDownloader.repositoryUrlAsString}.")
-    }
+    } ?: throw IOException("Could not download \"index.json\" at repository ${apiDownloader.repositoryUrlAsString}.")
 
-    val availableManifests = indexJson?.files?.mapNotNull { indexFile ->
-        indexFile.identifier?.let {
+    val availableManifests = indexJson.files.map { indexFile ->
+        indexFile.identifier.let {
             if (it.lowercase() != it) throw IllegalStateException("Identifier \"$it\" is not lowercase.")
             it.substring(0, it.lastIndexOf(":"))
         }
-    }?.distinct() ?: return
+    }.distinct()
+
+    val versionHashes = indexJson.files.map { indexFile -> indexFile.identifier.let { it.split(":")[2] } }
+
+    //Protect against the rare chance where we have a hash collision
+    if (versionHashes != versionHashes.distinct()) throw IllegalStateException("Duplicate version hashes found.")
 
     println("Index file validated successfully.")
 
