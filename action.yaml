@@ -2,7 +2,6 @@ name: Validate the-mod-index
 description: Validate the index.json and all manifest.json files for ReviversMC/the-mod-index styled indexes.
 inputs:
   repoUrl:
-    default: https://raw.githubusercontent.com/ReviversMC/the-mod-index/v1
     description: The URL of the repository to validate. Defaults to ReviversMC/the-mod-index.
     required: false
 runs:
