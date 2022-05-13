@@ -9,5 +9,5 @@ steps:
   - name: Do the checking of index and manifest files
     uses: reviversmc/the-mod-index-validation@"latest version"
     with: 
-      repoUrl: https://raw.githubusercontent.com/ReviversMC/the-mod-index/v2
+      repoUrl: https://raw.githubusercontent.com/ReviversMC/the-mod-index/v3
 ```
