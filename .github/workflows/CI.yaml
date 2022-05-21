@@ -23,7 +23,5 @@ jobs:
       with:
         distribution: temurin
         java-version: '17'
-    - name: Test if api works
-      run: ./gradlew test
-    - name: ShadowJar api
+    - name: ShadowJar validation
       run: ./gradlew shadowJar
