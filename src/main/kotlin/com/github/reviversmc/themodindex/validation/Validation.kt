@@ -19,14 +19,13 @@ fun main(args: Array<String>) {
         throw SerializationException("Serialization error of \"index.json\" at repository ${apiDownloader.repositoryUrlAsString}.")
     } ?: throw IOException("Could not download \"index.json\" at repository ${apiDownloader.repositoryUrlAsString}.")
 
-    val availableManifests = indexJson.files.map { indexFile ->
-        indexFile.identifier.let {
-            if (it.lowercase() != it) throw IllegalStateException("Identifier \"$it\" is not lowercase.")
-            it.substring(0, it.lastIndexOf(":"))
-        }
+    val availableManifests = indexJson.identifiers.map {
+        if (it.lowercase() != it) throw IllegalStateException("Identifier \"$it\" is not lowercase.")
+        if (it.split(":").size != 3) throw IllegalStateException("Identifier \"$it\" is not in the format \"modloader:modname:hash\".")
+        it.substring(0, it.lastIndexOf(":"))
     }.distinct()
 
-    val versionHashes = indexJson.files.map { indexFile -> indexFile.identifier.let { it.split(":")[2] } }
+    val versionHashes = indexJson.identifiers.map { it.split(":")[2] }
 
     //Protect against the rare chance where we have a hash collision
     if (versionHashes != versionHashes.distinct()) throw IllegalStateException("Duplicate version hashes found.")
