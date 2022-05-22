@@ -1,10 +1,16 @@
 package com.github.reviversmc.themodindex.validation
 
 import com.github.reviversmc.themodindex.api.downloader.DefaultApiDownloader
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import okhttp3.OkHttpClient
 import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.system.exitProcess
 
+@ExperimentalSerializationApi
 fun main(args: Array<String>) {
 
     val okHttpClient = OkHttpClient()
@@ -34,25 +40,26 @@ fun main(args: Array<String>) {
 
     println("Attempting to validate all manifests...")
 
-    var lastPercentagePrinted = 0.0
-    availableManifests.forEachIndexed { manifestNum, it ->
-        try {
-            apiDownloader.downloadManifestJson(it) //Just check if successful
-        } catch (ex: SerializationException) {
-            throw SerializationException("Serialization error of \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
+    runBlocking {
+        val checkedManifests = AtomicInteger(0)
+        val lastPercentagePrinted = AtomicInteger(0)
+        availableManifests.forEach {
+            launch {
+                try {
+                    apiDownloader.asyncDownloadManifestJson(it)
+                    checkedManifests.incrementAndGet()
+                    if (((checkedManifests.toDouble() / availableManifests.size) * 100).toInt() > lastPercentagePrinted.get()) {
+                        println("Checked ${(checkedManifests.toDouble() / availableManifests.size) * 100}% of manifests.")
+                        lastPercentagePrinted.set(((checkedManifests.toDouble() / availableManifests.size) * 100).toInt())
+                    }
+                } catch (ex: SerializationException) {
+                    throw SerializationException("Serialization error of manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
+                } catch (ex: IOException) {
+                    throw IOException("Could not download manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
+                }
+            }
         }
-
-        /*
-        Add one to manifest num as it is 0 indexed.
-        If there is only one entry, we should get (((0 + 1) / 1) * 100) = 100%, not ((0 / 1) * 100) = 0%.
-         */
-        val percentageComplete = (((manifestNum + 1) / availableManifests.size.toDouble()) * 100).toInt()
-
-        //We want to print progress every 10% from 0 to 100
-        if (percentageComplete >= (((lastPercentagePrinted / 10) + 1)) * 10) {
-            println("Manifest validation $percentageComplete% complete.")
-            lastPercentagePrinted = percentageComplete.toDouble()
-        }
+        println("All manifests validated successfully.")
+        exitProcess(0)
     }
-    println("All manifests validated successfully.")
 }
