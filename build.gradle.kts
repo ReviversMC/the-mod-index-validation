@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "com.github.reviversmc.themodindex.validation"
-version = "4.1.0"
+version = "4.1.1"
 
 repositories {
     mavenCentral()
@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    api("com.github.reviversmc:the-mod-index-api:5.1.0")
+    api("com.github.reviversmc:the-mod-index-api:5.1.1")
 }
 
 tasks {
