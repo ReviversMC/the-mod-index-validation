@@ -1,8 +1,11 @@
 package com.github.reviversmc.themodindex.validation
 
 import com.github.reviversmc.themodindex.api.downloader.DefaultApiDownloader
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import okhttp3.OkHttpClient
@@ -10,8 +13,11 @@ import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
+const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
+
 @ExperimentalSerializationApi
 fun main(args: Array<String>) {
+    //TODO Validate against regex provided in json schema as well
 
     val okHttpClient = OkHttpClient()
     val apiDownloader = if (args.isEmpty()) DefaultApiDownloader(okHttpClient)
@@ -41,24 +47,30 @@ fun main(args: Array<String>) {
     println("Attempting to validate all manifests...")
 
     runBlocking {
+        val manifestDownloadSemaphore = Semaphore(COROUTINES_PER_TASK)
+
         val checkedManifests = AtomicInteger(0)
-        val lastPercentagePrinted = AtomicInteger(0)
-        availableManifests.forEach {
-            launch {
-                try {
-                    apiDownloader.asyncDownloadManifestJson(it)
-                    checkedManifests.incrementAndGet()
-                    if (((checkedManifests.toDouble() / availableManifests.size) * 100).toInt() > lastPercentagePrinted.get()) {
-                        println("Checked ${(checkedManifests.toDouble() / availableManifests.size) * 100}% of manifests.")
-                        lastPercentagePrinted.set(((checkedManifests.toDouble() / availableManifests.size) * 100).toInt())
+
+        val manifestRequests = availableManifests.map {
+            async {
+                manifestDownloadSemaphore.withPermit {
+                    try {
+                        apiDownloader.downloadManifestJson(it)
+                        val currentlyChecked = checkedManifests.incrementAndGet()
+
+                        if (currentlyChecked % 10 == 0) println("Checked $currentlyChecked / ${availableManifests.size} of manifests.")
+
+                    } catch (ex: SerializationException) {
+                        throw SerializationException("Serialization error of manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
+                    } catch (ex: IOException) {
+                        throw IOException("Could not download manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
                     }
-                } catch (ex: SerializationException) {
-                    throw SerializationException("Serialization error of manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
-                } catch (ex: IOException) {
-                    throw IOException("Could not download manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
                 }
             }
         }
+
+        manifestRequests.awaitAll()
+
         println("All manifests validated successfully.")
         exitProcess(0)
     }
