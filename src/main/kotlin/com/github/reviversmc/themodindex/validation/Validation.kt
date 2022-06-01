@@ -8,10 +8,10 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
-import okhttp3.OkHttpClient
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
+
 
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
 
@@ -19,17 +19,16 @@ const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. C
 fun main(args: Array<String>) {
     //TODO Validate against regex provided in json schema as well
 
-    val okHttpClient = OkHttpClient()
-    val apiDownloader = if (args.isEmpty()) DefaultApiDownloader(okHttpClient)
-    else DefaultApiDownloader(okHttpClient, args[0])
+    val apiDownloader = if (args.isEmpty()) DefaultApiDownloader()
+    else DefaultApiDownloader(baseUrl = args[0])
 
     println("Attempting to validate index file...")
 
     val indexJson = try {
         apiDownloader.getOrDownloadIndexJson()
     } catch (ex: SerializationException) {
-        throw SerializationException("Serialization error of \"index.json\" at repository ${apiDownloader.repositoryUrlAsString}.")
-    } ?: throw IOException("Could not download \"index.json\" at repository ${apiDownloader.repositoryUrlAsString}.")
+        throw SerializationException("Serialization error of \"index.json\" at repository ${apiDownloader.formattedBaseUrl}.")
+    } ?: throw IOException("Could not download \"index.json\" at repository ${apiDownloader.formattedBaseUrl}.")
 
     val availableManifests = indexJson.identifiers.map {
         if (it.lowercase() != it) throw IllegalStateException("Identifier \"$it\" is not lowercase.")
@@ -61,9 +60,9 @@ fun main(args: Array<String>) {
                         if (currentlyChecked % 10 == 0) println("Checked $currentlyChecked / ${availableManifests.size} of manifests.")
 
                     } catch (ex: SerializationException) {
-                        throw SerializationException("Serialization error of manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
+                        throw SerializationException("Serialization error of manifest \"$it\" at repository ${apiDownloader.formattedBaseUrl}.")
                     } catch (ex: IOException) {
-                        throw IOException("Could not download manifest \"$it\" at repository ${apiDownloader.repositoryUrlAsString}.")
+                        throw IOException("Could not download manifest \"$it\" at repository ${apiDownloader.formattedBaseUrl}.")
                     }
                 }
             }
