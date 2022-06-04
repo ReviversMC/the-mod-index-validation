@@ -33,13 +33,27 @@ fun main(args: Array<String>) {
     val availableManifests = indexJson.identifiers.map {
         if (it.lowercase() != it) throw IllegalStateException("Identifier \"$it\" is not lowercase.")
         if (it.split(":").size != 3) throw IllegalStateException("Identifier \"$it\" is not in the format \"modloader:modname:hash\".")
-        it.substring(0, it.lastIndexOf(":"))
+        it.substringBeforeLast(":")
     }.distinct()
 
     val versionHashes = indexJson.identifiers.map { it.split(":")[2] }
 
     //Protect against the rare chance where we have a hash collision
-    if (versionHashes != versionHashes.distinct()) throw IllegalStateException("Duplicate version hashes found.")
+    if (versionHashes != versionHashes.distinct()) {
+        val distinctHashes = versionHashes.distinct()
+        for (i in distinctHashes.indices) {
+            if (versionHashes[i] != distinctHashes[i]) { //Duplicate found. The duplicate is versionHashes[i]
+                val collidedIdentifiers =
+                    indexJson.identifiers.filter { it.substringAfterLast(":") == versionHashes[i] }
+                val name = collidedIdentifiers.first().split(":")[1]
+                if (collidedIdentifiers != collidedIdentifiers.filter { it.split(":")[1] == name }) {
+                    throw IllegalStateException("Hash collision found for the follow projects. A hash collision occurs when two or more different projects (the same project for a different mod loader does not count as separate projects) have the same hash for a file.\n" +
+                            "Projects: ${collidedIdentifiers.joinToString(", ")}\n" +
+                            "Hash: $versionHashes[$i]")
+                }
+            }
+        }
+    }
 
     println("Index file validated successfully.")
 
