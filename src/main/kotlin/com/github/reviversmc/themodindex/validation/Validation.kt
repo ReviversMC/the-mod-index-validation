@@ -49,7 +49,7 @@ fun main(args: Array<String>) {
                 if (collidedIdentifiers != collidedIdentifiers.filter { it.split(":")[1] == name }) {
                     throw IllegalStateException("Hash collision found for the follow projects. A hash collision occurs when two or more different projects (the same project for a different mod loader does not count as separate projects) have the same hash for a file.\n" +
                             "Projects: ${collidedIdentifiers.joinToString(", ")}\n" +
-                            "Hash: $versionHashes[$i]")
+                            "Hash: ${versionHashes[i]}")
                 }
             }
         }
