@@ -1,0 +1,13 @@
+name: Update references of certain tags
+
+on:
+  release:
+    types: [ published ]
+
+jobs:
+  actions-tagger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: Actions-R-Us/actions-tagger@latest
+        with:
+          publish_latest_tag: true
