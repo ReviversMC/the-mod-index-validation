@@ -6,7 +6,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
@@ -15,7 +14,6 @@ import kotlin.system.exitProcess
 
 const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. Change if better number is found.
 
-@ExperimentalSerializationApi
 fun main(args: Array<String>) {
     //TODO Validate against regex provided in json schema as well
 
