@@ -1,7 +1,7 @@
 name: Java CI with Gradle
 on:
   push:
-    branches: [ main, next/* ]
+    branches: [ dependabot/*, main, next/* ]
 jobs:
   build:
     runs-on: ubuntu-latest
