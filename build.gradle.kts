@@ -13,7 +13,7 @@ repositories {
 
 dependencies {
     api("com.github.reviversmc:the-mod-index-api:7.1.0")
-    api("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.2")
+    api("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.3")
 }
 
 tasks {
