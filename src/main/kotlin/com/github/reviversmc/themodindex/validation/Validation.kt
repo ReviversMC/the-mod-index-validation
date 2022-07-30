@@ -17,7 +17,7 @@ const val COROUTINES_PER_TASK = 5 // Arbitrary number of concurrent downloads. C
 private fun validateIndexRegex(indexJson: IndexJson) {
     if (!Regex("^[0-9]+\\.[0-9]+\\.[0-9]+\$").matches(indexJson.indexVersion)) throw IllegalArgumentException("Invalid index version: ${indexJson.indexVersion}")
     indexJson.identifiers.forEach {
-        if (!Regex("^[a-z0-9\\-_]+:[a-z0-9\\-_]+:[a-z0-9\\-_]+\$").matches(it)) throw IllegalArgumentException("Invalid identifier: $it")
+        if (!Regex("^[a-z0-9\\-_]+:[a-z0-9\\-_]+:[a-z0-9]{15}\$").matches(it)) throw IllegalArgumentException("Invalid identifier: $it")
     }
 }
 
@@ -40,7 +40,7 @@ private fun validateManifestRegex(manifestJson: ManifestJson) {
         versionFile.mcVersions.forEach {
             if (!Regex("^[0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9\\-+._\\s]*\$").matches(it)) throw IllegalArgumentException("Invalid MC version: $it in ${manifestJson.genericIdentifier}")
         }
-        if (!Regex("^[a-z0-9]{128}\$").matches(versionFile.sha512Hash)) throw IllegalArgumentException("Invalid SHA512 hash: ${versionFile.sha512Hash} in ${manifestJson.genericIdentifier}")
+        if (!Regex("^[a-z0-9]{15}\$").matches(versionFile.shortSha512Hash)) throw IllegalArgumentException("Invalid SHA512 hash: ${versionFile.shortSha512Hash} in ${manifestJson.genericIdentifier}")
         versionFile.downloadUrls.forEach {
             if (!Regex("^[a-zA-Z0-9\\-_:/?&]+\$").matches(it)) throw IllegalArgumentException("Invalid download url: $it in ${manifestJson.genericIdentifier}")
         }
