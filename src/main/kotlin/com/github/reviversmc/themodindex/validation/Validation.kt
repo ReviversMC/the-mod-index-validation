@@ -2,12 +2,13 @@ package com.github.reviversmc.themodindex.validation
 
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
-import com.github.reviversmc.themodindex.api.downloader.DefaultApiDownloader
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.SerializationException
-import java.io.IOException
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
+import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
@@ -23,19 +24,27 @@ private fun validateIndexRegex(indexJson: IndexJson) {
 
 private fun validateManifestRegex(manifestJson: ManifestJson) {
     if (!Regex("^[0-9]+\\.[0-9]+\\.[0-9]+\$").matches(manifestJson.indexVersion)) throw IllegalArgumentException("Invalid index version: ${manifestJson.indexVersion} in ${manifestJson.genericIdentifier}")
-    if (!Regex("^[a-z0-9\\-_]+:[a-z0-9\\-_]+\$").matches(manifestJson.genericIdentifier)) throw IllegalArgumentException("Invalid generic identifier: ${manifestJson.genericIdentifier}")
+    if (!Regex("^[a-z0-9\\-_]+:[a-z0-9\\-_]+\$").matches(manifestJson.genericIdentifier)) throw IllegalArgumentException(
+        "Invalid generic identifier: ${manifestJson.genericIdentifier}"
+    )
     if (!Regex("^[a-zA-Z0-9\\-_\\s]+\$").matches(manifestJson.fancyName)) throw IllegalArgumentException("Invalid fancy name: ${manifestJson.fancyName} in ${manifestJson.genericIdentifier}")
     if (!Regex("^[a-zA-Z0-9\\-_\\s]+\$").matches(manifestJson.author)) throw IllegalArgumentException("Invalid author name: ${manifestJson.author} in ${manifestJson.genericIdentifier}")
-    if (manifestJson.license?.let { Regex("^[a-zA-Z0-9\\-_\\s]+\$").matches(it) } == false) throw IllegalArgumentException("Invalid license: ${manifestJson.license} in ${manifestJson.genericIdentifier}")
+    if (manifestJson.license?.let { Regex("^[a-zA-Z0-9\\-_\\s]+\$").matches(it) } == false) throw IllegalArgumentException(
+        "Invalid license: ${manifestJson.license} in ${manifestJson.genericIdentifier}"
+    )
     // No validation needed for CF id (int)
     if (manifestJson.modrinthId?.let { Regex("^[a-zA-Z0-9]+\$").matches(it) } == false) throw IllegalArgumentException("Invalid modrinth id: ${manifestJson.modrinthId} in ${manifestJson.genericIdentifier}")
-    if (manifestJson.links.issue?.let { Regex("^[a-zA-Z0-9\\-_]+\$").matches(it) } == false) throw IllegalArgumentException("Invalid issue link: ${manifestJson.links.issue} in ${manifestJson.genericIdentifier}")
-    if (manifestJson.links.sourceControl?.let { Regex("^[a-zA-Z0-9\\-_]+\$").matches(it) } == false) throw IllegalArgumentException("Invalid source control link: ${manifestJson.links.sourceControl} in ${manifestJson.genericIdentifier}")
+    if (manifestJson.links.issue?.let { Regex("^[a-zA-Z0-9\\-_]+\$").matches(it) } == false) throw IllegalArgumentException(
+        "Invalid issue link: ${manifestJson.links.issue} in ${manifestJson.genericIdentifier}"
+    )
+    if (manifestJson.links.sourceControl?.let { Regex("^[a-zA-Z0-9\\-_]+\$").matches(it) } == false) throw IllegalArgumentException(
+        "Invalid source control link: ${manifestJson.links.sourceControl} in ${manifestJson.genericIdentifier}"
+    )
     manifestJson.links.others.forEach {
         if (!Regex("^[a-zA-Z0-9\\-_\\s]+\$").matches(it.linkName)) throw IllegalArgumentException("Invalid link name: ${it.linkName} in ${manifestJson.genericIdentifier}")
         if (!Regex("^[a-zA-Z0-9\\-_:/?&]+\$").matches(it.url)) throw IllegalArgumentException("Invalid link url: ${it.url} in ${manifestJson.genericIdentifier}")
     }
-    manifestJson.files.forEach {versionFile ->
+    manifestJson.files.forEach { versionFile ->
         if (!Regex("^[a-zA-Z0-9\\-_\\s]+\$").matches(versionFile.fileName)) throw IllegalArgumentException("Invalid file name: ${versionFile.fileName} in ${manifestJson.genericIdentifier}")
         versionFile.mcVersions.forEach {
             if (!Regex("^[0-9]+\\.[0-9]+\\.[0-9]+[a-zA-Z0-9\\-+._\\s]*\$").matches(it)) throw IllegalArgumentException("Invalid MC version: $it in ${manifestJson.genericIdentifier}")
@@ -57,16 +66,18 @@ private fun validateManifestRegex(manifestJson: ManifestJson) {
 
 fun main(args: Array<String>) {
 
-    val apiDownloader = if (args.isEmpty()) DefaultApiDownloader()
-    else DefaultApiDownloader(baseUrl = args[0])
-
+    val repoToCheck = File(args.getOrNull(0) ?: throw IllegalArgumentException("No repository to check specified"))
+    val json = Json {
+        ignoreUnknownKeys = true
+        prettyPrint = true
+    }
     println("Attempting to validate index file...")
 
-    val indexJson = try {
-        apiDownloader.getOrDownloadIndexJson()
+    val indexJson: IndexJson = try {
+        json.decodeFromString(File(repoToCheck, "index.json").readText())
     } catch (ex: SerializationException) {
-        throw SerializationException("Serialization error of \"index.json\" at repository ${apiDownloader.formattedBaseUrl}.")
-    } ?: throw IOException("Could not download \"index.json\" at repository ${apiDownloader.formattedBaseUrl}.")
+        throw SerializationException("Serialization error of \"index.json\".")
+    }
 
     validateIndexRegex(indexJson)
     val availableManifests = indexJson.identifiers.map { it.substringBeforeLast(":") }.distinct()
@@ -105,7 +116,12 @@ fun main(args: Array<String>) {
             launch {
                 manifestDownloadSemaphore.withPermit {
                     try {
-                        val manifest = apiDownloader.downloadManifestJson(it) ?: throw IOException("Could not download manifest for $it")
+                        val manifest: ManifestJson = json.decodeFromString(
+                            File(
+                                "$repoToCheck/${it.substringBefore(":")}",
+                                "${it.substringAfter(":")}.json"
+                            ).readText()
+                        )
                         val currentlyChecked = checkedManifests.incrementAndGet()
                         try {
                             validateManifestRegex(manifest)
@@ -116,9 +132,7 @@ fun main(args: Array<String>) {
                         if (currentlyChecked % 10 == 0) println("Checked $currentlyChecked / ${availableManifests.size} of manifests.")
 
                     } catch (ex: SerializationException) {
-                        throw SerializationException("Serialization error of manifest \"$it\" at repository ${apiDownloader.formattedBaseUrl}.")
-                    } catch (ex: IOException) {
-                        throw IOException("Could not download manifest \"$it\" at repository ${apiDownloader.formattedBaseUrl}.")
+                        throw SerializationException("Serialization error of manifest \"$it\".")
                     }
                 }
             }
