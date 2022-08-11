@@ -2,6 +2,7 @@ package com.github.reviversmc.themodindex.validation
 
 import com.github.reviversmc.themodindex.api.data.IndexJson
 import com.github.reviversmc.themodindex.api.data.ManifestJson
+import com.github.reviversmc.themodindex.api.data.ManifestJsonWithOverrides
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -116,12 +117,12 @@ fun main(args: Array<String>) {
             launch {
                 manifestDownloadSemaphore.withPermit {
                     try {
-                        val manifest: ManifestJson = json.decodeFromString(
+                        val manifest = json.decodeFromString<ManifestJsonWithOverrides>(
                             File(
                                 "$repoToCheck/${it.substringBefore(":")}",
                                 "${it.substringAfter(":")}.json"
                             ).readText()
-                        )
+                        ).toManifestJson()
                         val currentlyChecked = checkedManifests.incrementAndGet()
                         try {
                             validateManifestRegex(manifest)
